@@ -1,5 +1,6 @@
 package com.codepath.simpletodo;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
@@ -23,14 +24,22 @@ public class MainActivity extends AppCompatActivity {
     ListView lvItems;
     EditText etEditText;
 
+    private final int EDIT_REQUEST_CODE = 333; // Magic request code for edit activity
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Load previous data
         populateArrayItems();
+
+        // Bind the views
         lvItems = (ListView) findViewById(R.id.lvItems);
         lvItems.setAdapter(todoAdapter);
         etEditText = (EditText) findViewById(R.id.etEditText);
+
+        // Delete item on long click
         lvItems.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -38,6 +47,16 @@ public class MainActivity extends AppCompatActivity {
                 writeItems();
                 todoAdapter.notifyDataSetChanged();
                 return true;
+            }
+        });
+        // Take user to edit item screen
+        lvItems.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Intent intent = new Intent(MainActivity.this, EditItemActivity.class);
+                intent.putExtra("text", todoItems.get(position));
+                intent.putExtra("position", position);
+                startActivityForResult(intent, EDIT_REQUEST_CODE);
             }
         });
     }
@@ -64,6 +83,31 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (resultCode == RESULT_OK && requestCode == EDIT_REQUEST_CODE) {
+            String newText = data.getExtras().getString("text");
+            int position = data.getExtras().getInt("position");
+            todoItems.set(position, newText);
+            writeItems();
+            todoAdapter.notifyDataSetChanged();
+        }
+    }
+
+    //
+    // Event handlers
+    //
+    public void onAddItem(View view) {
+        todoAdapter.add(etEditText.getText().toString());
+        etEditText.setText("");
+        writeItems();
+    }
+
+    //
+    // Private helpers
+    //
     private void populateArrayItems() {
         readItems();
         todoAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, todoItems);
@@ -88,11 +132,5 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
         }
 
-    }
-
-    public void onAddItem(View view) {
-        todoAdapter.add(etEditText.getText().toString());
-        etEditText.setText("");
-        writeItems();
     }
 }
